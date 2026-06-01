@@ -1,10 +1,7 @@
 .venv/
+venv/
 __pycache__/
 *.pyc
-.DS_Store
-data/
-*.egg-info/
-.pytest_cache/
 .env
-*.log
-src/topic_modeling/
+.DS_Store
+*.csv
