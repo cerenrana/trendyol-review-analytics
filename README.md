@@ -1,40 +1,38 @@
 # Trendyol Review Analytics
 
-Trendyol ürün yorumlarını toplayan, temizleyen ve NLP teknikleriyle analiz eden bir Python projesi. Proje iki ana analiz hattı içerir:
+Trendyol ürün yorumları için hazırlanmış Streamlit tabanlı müşteri yorum analizi projesi. Mevcut uygulama; yorum toplama, aspect bazlı sentiment analizi, semantik clustering ve basit trend çıktıları üzerine kuruludur.
 
-- Topic modeling ve sentiment analizi: Yorumları BERTopic ile konu kümelerine ayırır, Türkçe BERT sentiment modeliyle pozitif, negatif ve nötr sınıflandırması yapar.
-- Legacy aspect analizi: Kargo, paketleme, fiyat-performans, nemlendirme gibi önceden tanımlı aspect'ler için kural tabanlı sentiment ve semantik clustering çıktıları üretir.
+## Özellikler
 
-Streamlit dashboard üzerinden topic dağılımı, sentiment oranları, problemli topic'ler, yorum arama ve çıktı indirme akışları incelenebilir.
+- Trendyol yorumlarını API üzerinden CSV olarak toplama
+- Rating, yorum metni ve tarih bilgilerini işleme
+- Kargo, paketleme, fiyat-performans, nemlendirme gibi aspect'leri tespit etme
+- Aspect bazlı kural tabanlı sentiment analizi
+- SentenceTransformer, KMeans ve KeyBERT ile semantik clustering
+- Streamlit dashboard ile yorumları, aspect dağılımlarını, sentiment sonuçlarını ve cluster içeriklerini inceleme
 
 ## Proje Yapısı
 
 ```text
 .
-├── app.py                         # Topic modeling ve sentiment dashboard'u
-├── app_legacy.py                  # Eski aspect/sentiment dashboard'u
-├── requirements.txt               # Python bağımlılıkları
+├── app.py                    # Streamlit dashboard
+├── requirements.txt          # Python bağımlılıkları
 ├── data/
-│   ├── raw/reviews.csv            # Trendyol'dan çekilen ham yorumlar
-│   └── processed/                 # Analiz çıktıları
-├── src/
-│   ├── review_scraper.py          # Trendyol yorumlarını çeker
-│   ├── aspect_sentiment.py        # Kural tabanlı aspect sentiment analizi
-│   ├── semantic_clustering.py     # Aspect bazlı semantik clustering
-│   ├── trend_analysis.py          # Günlük trend çıktıları üretir
-│   └── topic_modeling/
-│       ├── config.py              # Model, dosya yolu ve pipeline ayarları
-│       ├── preprocessing.py       # Veri yükleme, temizleme, stopword çıkarımı
-│       ├── modeling.py            # Embedding, UMAP, HDBSCAN, BERTopic
-│       ├── sentiment.py           # Türkçe sentiment modeli
-│       ├── export.py              # CSV ve JSON export işlemleri
-│       └── run_topic_modeling.py  # Ana pipeline orkestrasyonu
-└── QUICK_START.md                 # Hızlı başlangıç notları
+│   ├── raw/
+│   │   └── reviews.csv       # Ham Trendyol yorumları
+│   └── processed/
+│       ├── reviews_with_sentiment.csv
+│       ├── processed_reviews.csv
+│       └── clustered_reviews.csv
+└── src/
+    ├── review_scraper.py     # Trendyol yorumlarını çeker
+    ├── sentiment_analysis.py # Mevcut durumda yorum çekme script'i
+    ├── aspect_sentiment.py   # Aspect ve kural tabanlı sentiment üretir
+    ├── semantic_clustering.py# Aspect/sentiment bazlı cluster üretir
+    └── trend_analysis.py     # Günlük trend dosyaları üretir
 ```
 
 ## Kurulum
-
-Python 3.8 veya üzeri önerilir. İlk model indirmelerinde internet bağlantısı gerekir; embedding ve sentiment modelleri Hugging Face üzerinden indirilir.
 
 ```bash
 python3 -m venv .venv
@@ -43,55 +41,67 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Veri Hazırlama
+## Kullanım
 
-Projede varsayılan topic modeling girdisi:
+### 1. Yorumları Çekme
+
+```bash
+python src/review_scraper.py
+```
+
+Bu komut Trendyol API'den yorumları çeker ve şu dosyaya kaydeder:
+
+```text
+data/raw/reviews.csv
+```
+
+`src/review_scraper.py` içindeki `contentId` ve `merchantId` değerleri belirli bir ürün için ayarlanmıştır. Farklı ürün analiz etmek için bu değerleri güncelleyin.
+
+### 2. Aspect Sentiment Analizi
+
+```bash
+python src/aspect_sentiment.py
+```
+
+Bu script şu girdiyi bekler:
+
+```text
+data/processed/reviews_with_sentiment.csv
+```
+
+Çıktı:
 
 ```text
 data/processed/processed_reviews.csv
 ```
 
-Bu dosyada en az `comment` veya `cleaned_comment` kolonu bulunmalıdır. Mevcut veri akışı şu şekilde çalışır:
+### 3. Semantic Clustering
 
 ```bash
-python src/review_scraper.py
-python src/sentiment_analysis.py
-python src/aspect_sentiment.py
+python src/semantic_clustering.py
 ```
 
-`review_scraper.py` içindeki `contentId` ve `merchantId` değerleri belirli bir Trendyol ürünü için ayarlanmıştır. Farklı ürün analiz edilecekse bu parametreler güncellenmelidir.
+Bu script `processed_reviews.csv` üzerinden aspect ve sentiment kırılımında cluster üretir.
 
-## Topic Modeling Pipeline
-
-Ana topic modeling ve sentiment pipeline'ını çalıştırmak için:
-
-```bash
-python -m src.topic_modeling.run_topic_modeling
-```
-
-Pipeline şu adımları uygular:
-
-1. CSV verisini yükler.
-2. Yorumları temizler ve isteğe bağlı olarak Türkçe stopword'leri çıkarır.
-3. `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` modeliyle embedding üretir.
-4. UMAP ve HDBSCAN ile kümeleri çıkarır.
-5. BERTopic ile topic isimleri ve anahtar kelimeler üretir.
-6. `savasy/bert-base-turkish-sentiment-cased` modeliyle sentiment analizi yapar.
-7. Sonuçları CSV ve JSON olarak dışa aktarır.
-
-Beklenen çıktı dosyaları:
+Çıktı:
 
 ```text
-data/processed/topic_model_reviews.csv
-data/processed/topic_summary.csv
-data/processed/topic_summary.json
+data/processed/clustered_reviews.csv
 ```
 
-Mevcut örnek çıktılarda yaklaşık 1.066 işlenmiş yorum ve 9 topic bulunmaktadır.
+### 4. Trend Çıktıları
 
-## Dashboard
+```bash
+python src/trend_analysis.py
+```
 
-Topic modeling dashboard'unu başlatmak için:
+Trend çıktıları şu klasöre yazılır:
+
+```text
+data/processed/dashboard/
+```
+
+### 5. Dashboard
 
 ```bash
 streamlit run app.py
@@ -105,110 +115,24 @@ http://localhost:8501
 
 Dashboard sekmeleri:
 
-- Genel İstatistikler: Topic bazlı sentiment dağılımı, en negatif topic'ler ve topic boyutları.
-- Topic Detayları: Seçilen topic için anahtar kelimeler, oranlar ve temsili yorumlar.
-- Yorum Arama: Yorum içeriği ve sentiment'e göre filtreleme.
-- Verileri İndir: CSV ve JSON çıktılarını indirme.
+- Aspect Analysis
+- Sentiment Overview
+- Detailed Reviews
+- Clustering
 
-Legacy dashboard için:
+## Veri Dosyaları
 
-```bash
-streamlit run app_legacy.py
-```
+`data/raw/reviews.csv` ham yorumları içerir.
 
-## Çıktı Dosyaları
+`data/processed/reviews_with_sentiment.csv` yorumların genel sentiment skorlarıyla birlikte tutulduğu ara dosyadır.
 
-### `topic_model_reviews.csv`
+`data/processed/processed_reviews.csv` aspect tespiti ve aspect sentiment kolonlarını içerir.
 
-Her yorum için topic ve sentiment bilgisini içerir.
+`data/processed/clustered_reviews.csv` semantic clustering sonuçlarını içerir.
 
-Temel kolonlar:
+## Notlar
 
-- `original_comment`
-- `cleaned_comment`
-- `topic_id`
-- `topic_name`
-- `topic_keywords`
-- `sentiment`
-- `sentiment_score`
-
-### `topic_summary.csv`
-
-Topic seviyesinde özet istatistikleri içerir.
-
-Temel kolonlar:
-
-- `topic_id`
-- `topic_name`
-- `topic_size`
-- `keywords`
-- `representative_comments`
-- `positive_count`
-- `negative_count`
-- `neutral_count`
-- `positive_ratio`
-- `negative_ratio`
-- `neutral_ratio`
-- `avg_sentiment_score`
-
-### `topic_summary.json`
-
-Dashboard veya farklı servislerde kullanılabilecek JSON formatlı topic özetidir.
-
-## Ayarlar
-
-Topic modeling ayarları [src/topic_modeling/config.py](src/topic_modeling/config.py) dosyasından değiştirilebilir.
-
-Sık değiştirilen değerler:
-
-```python
-DEVICE = "cpu"
-HDBSCAN_MIN_CLUSTER_SIZE = 15
-HDBSCAN_MIN_SAMPLES = 5
-BERTOPIC_TOP_N_WORDS = 10
-SENTIMENT_BATCH_SIZE = 32
-DEFAULT_TOP_N_TOPICS = 10
-```
-
-Topic sayısı çok azsa `HDBSCAN_MIN_CLUSTER_SIZE` düşürülebilir. Topic sayısı çok fazlaysa bu değer artırılabilir.
-
-## Sorun Giderme
-
-### Analiz dosyaları bulunamadı
-
-Dashboard açıldığında çıktı dosyaları bulunamazsa önce pipeline'ı çalıştırın:
-
-```bash
-python -m src.topic_modeling.run_topic_modeling
-```
-
-### `ModuleNotFoundError: No module named 'umap'`
-
-Bağımlılıkları tekrar kurun:
-
-```bash
-pip install -r requirements.txt
-```
-
-### İlk çalıştırma yavaş
-
-İlk çalıştırmada Hugging Face modelleri indirildiği için pipeline yavaş olabilir. Modeller yerel cache'e alındıktan sonra sonraki çalıştırmalar daha hızlı olur.
-
-### CUDA hatası
-
-Mac veya GPU olmayan makinelerde `DEVICE = "cpu"` olarak kalmalıdır.
-
-## Geliştirme Notları
-
-Bu projede iyileştirilebilecek başlıca alanlar:
-
-- `QUICK_START.md` ve `test_data.py` dosyalarında karakter kodlama bozulmaları var; Türkçe metinler temizlenmeli.
-- Script'lerde sabit ürün parametreleri ve dosya yolları var; CLI argümanları veya `.env` ayarlarıyla yönetilebilir.
-- Topic pipeline için küçük bir test seti ve otomatik smoke test eklenebilir.
-- Büyük CSV dosyaları `.gitignore` içinde dışlanmış olsa da mevcut takip durumu düzenli kontrol edilmeli; veri gizliliği için ham yorumların repoya eklenmemesi tercih edilebilir.
-- `app.py` içinde bazı kolonların varlığı varsayılıyor; eksik kolon durumları için kullanıcı dostu hata mesajları eklenebilir.
-- Topic özetinde `keywords` alanı sentiment istatistiklerine taşınmadığı için bazı export'larda boş kalabilir; topic bilgisiyle merge edilerek düzeltilebilir.
-
-## Lisans ve Veri Kullanımı
-
-Bu proje eğitim ve analiz amaçlıdır. Trendyol verisi kullanılırken platform kullanım koşulları, kişisel veri gizliliği ve rate limit kuralları dikkate alınmalıdır.
+- CSV dosyaları `.gitignore` ile dışlanmıştır; veri dosyalarının repoya eklenmemesi tercih edilir.
+- İlk embedding modeli çalıştırması model indirme ve cache oluşturma nedeniyle yavaş olabilir.
+- `semantic_clustering.py` içinde KeyBERT kullanıldığı için `keybert` bağımlılığı gereklidir.
+- `trend_analysis.py` grafik üretmek için `matplotlib` kullanır.
